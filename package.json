@@ -1,0 +1,34 @@
+{
+  "name": "deepstream.io-storage-cassandra",
+  "version": "0.0.1",
+  "description": "Apache Cassandra storage connector for deepstream.io",
+  "main": "src/connector.js",
+  "scripts": {
+    "test": "mocha",
+    "coverage": "istanbul cover _mocha",
+    "lint": "eslint \"src/**/*.js\" \"test/**/*.js\"",
+    "ci": "npm run coverage && npm run lint"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EnigmaCurry/deepstream.io-storage-cassandra.git"
+  },
+  "author": "Ryan McGuire",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/EnigmaCurry/deepstream.io-storage-cassandra/issues"
+  },
+  "homepage": "https://github.com/EnigmaCurry/deepstream.io-storage-cassandra",
+  "dependencies": {
+    "cassandra-driver": "^3.2.0",
+    "lodash": "^4.17.4"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "coveralls": "^2.11.9",
+    "eslint": "^2.11.1",
+    "eslint-config-airbnb": "^3.1.0",
+    "istanbul": "^0.4.3",
+    "mocha": "^2.5.3"
+  }
+}
