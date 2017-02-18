@@ -2,7 +2,7 @@
 
 [deepstream](https://deepstream.io) storage connector for [Apache Cassandra](http://cassandra.apache.org)
 
-Code status: ALPHA prototype - I have not really tested this other than to see the unit tests pass. Caveat emptor.
+Code status: trailblazer - I have not used this code in production yet.
 
 ## Configuration options
 ```yaml
@@ -27,10 +27,13 @@ plugins:
           type: 'text'
 ```
 
- * db_hosts - The initial list of Cassandra nodes for the driver to connect to
- * keyspace - The Cassandra keyspace for deepstream to manage
- * defaultTable - The default table to store records that don't specify a table name
- * createTableClusterKeys - The default key columns to create on new
+ * db_hosts - The initial list of Cassandra nodes for the driver to
+   connect to.
+ * keyspace - The name of the Cassandra keyspace for deepstream to
+   manage. It must be created beforehand.
+ * defaultTable - **optional** - The default table to store records that
+   don't specify a table name. 'global' if unspecified.
+ * defaultPrimaryKey - **optional** - The default key columns to create on new
    tables. The default is to use all text fields. You can specify
    non-text fields if you wish, but you will have to do extra frontend
    validation in valve to prevent using invalid keys in this case.
@@ -45,7 +48,7 @@ columns](http://cassandra.apache.org/doc/latest/cql/ddl.html#clustering-columns)
 
 For example, a deepstream record might look like this:
 
- * key: 'user/ryan/settings'
+ * key: ```user/ryan/settings```
  * data: ```{ defaultView: 'messages', allowMessages: ['admin', 'mod']}```
 
 Cassandra would store such a record this way (assuming defaultPrimaryKey hasn't been modified):
@@ -58,7 +61,7 @@ does not need to specify all of the cluster keys, but those that it
 omits will be set to a blank string '' (as is the case here with k2
 and k3.) If a record key specifies *more* cluster keys than exist on
 the table, they will spill over into the last cluster column. For
-instance, the key 'user/ryan/one/two/three/four' would look like this
+instance, the key ```user/ryan/one/two/three/four``` would look like this
 in cassandra, note k3, the last key column, is allowed to have '/' in
 it:
 
@@ -70,5 +73,5 @@ it:
 The client really does not need to worry about these details, but it
 is useful to understand how the data is stored so that you can make
 efficient queries. [See more examples in the the connector code
-here](src/connector.js)
+here](https://github.com/EnigmaCurry/deepstream.io-storage-cassandra/blob/master/src/connector.js)
 
