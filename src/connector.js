@@ -147,7 +147,6 @@ class Connector extends events.EventEmitter {
           return `${k}=?`
         })
         const query = `SELECT JSON * from ${validated.table} WHERE ${keyConstraints.join(' AND ')}`
-        console.log(validated.keys)
         this.client.execute(query, validated.keys, {prepare: true})
                .then(result => {
                  if (result.rowLength == 0) {
