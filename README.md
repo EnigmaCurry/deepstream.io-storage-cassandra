@@ -12,7 +12,7 @@ plugins:
     options:
       db_hosts:
         - ${CASSANDRA_HOST}
-      keyspace: 'deepstream'
+      keyspace: 'deepstream' # This keyspace has to already exist
 
       # optional (specify only if you want different defaults)
       defaultTable: 'global'

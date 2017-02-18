@@ -70,7 +70,7 @@ class Connector extends events.EventEmitter {
     this.isReady = false
     this.name = pckg.name
     this.version = pckg.version
-    this._keyspace = options.keyspace || 'deepstream'
+    this._keyspace = options.keyspace
     this._defaultTable = options.defaultTable || 'global'
     this._defaultPrimaryKey = options.defaultPrimaryKey || [{name:'pk', type:'text'},
                                                             {name:'k1', type:'text'},
