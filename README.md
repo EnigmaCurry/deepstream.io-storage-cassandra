@@ -13,15 +13,27 @@ plugins:
       db_hosts:
         - ${CASSANDRA_HOST}
       keyspace: 'deepstream'
+
+      # optional (specify only if you want different defaults)
       defaultTable: 'global'
-      createTableClusterKeys: 3
+      defaultPrimaryKey:
+        - name: 'pk'
+          type: 'text'
+        - name: 'k1'
+          type: 'text'
+        - name: 'k2'
+          type: 'text'
+        - name: 'k3'
+          type: 'text'
 ```
 
  * db_hosts - The initial list of Cassandra nodes for the driver to connect to
  * keyspace - The Cassandra keyspace for deepstream to manage
  * defaultTable - The default table to store records that don't specify a table name
- * createTableClusterKeys - The number of clustering keys to create on new tables.
-
+ * createTableClusterKeys - The default key columns to create on new
+   tables. The default is to use all text fields. You can specify
+   non-text fields if you wish, but you will have to do extra frontend
+   validation in valve to prevent using invalid keys in this case.
 
 ## How records are mapped to Cassandra rows:
 
@@ -36,7 +48,7 @@ For example, a deepstream record might look like this:
  * key: 'user/ryan/settings'
  * data: ```{ defaultView: 'messages', allowMessages: ['admin', 'mod']}```
 
-Cassandra would store such a record this way (assuming createTableClusterKeys=3):
+Cassandra would store such a record this way (assuming defaultPrimaryKey hasn't been modified):
 
  * ```CREATE TABLE IF NOT EXISTS user (pk text, k1 text, k2 text, k3 text, data text, PRIMARY KEY (pk, k1, k2, k3));```
  * ```INSERT INTO user JSON '{ pk:"ryan", k1:"settings", k2:"", k3:"", data: /*serialized data here*/ }'```
@@ -44,16 +56,19 @@ Cassandra would store such a record this way (assuming createTableClusterKeys=3)
 k1, k2, and k3 are the clustering columns. A deepstream record key
 does not need to specify all of the cluster keys, but those that it
 omits will be set to a blank string '' (as is the case here with k2
-and k3.)
+and k3.) If a record key specifies *more* cluster keys than exist on
+the table, they will spill over into the last cluster column. For
+instance, the key 'user/ryan/one/two/three/four' would look like this
+in cassandra, note k3, the last key column, is allowed to have '/' in
+it:
 
-The client really does not need to worry about this detail, but it is
-useful on the backend for storing records in an ordered fashion making
-for efficient queries. [See more examples in the the connector code
+     pk   | k1  | k2  | k3         | data
+    ------+-----+-----+------------+------------------
+     ryan | one | two | three/four | /* serialized data */
+
+
+The client really does not need to worry about these details, but it
+is useful to understand how the data is stored so that you can make
+efficient queries. [See more examples in the the connector code
 here](src/connector.js)
 
-You will want to tighten up your valve permissions to not be able to
-create records that have more cluster keys than you have specified in
-createTableClusterKeys. For instance, if createTableClusterKeys=3,
-then the key 'user/ryan/one/two/three/four' would produce an error
-when attempting to save, because the table cannot store more than
-three cluster keys in this case.

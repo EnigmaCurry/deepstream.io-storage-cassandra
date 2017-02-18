@@ -2,11 +2,11 @@ const Connector = require('./connector')
 const util = require('./util')
 
 const testConnector = (conn) => {
-  conn.set('test_composite_deep/one/two/three/four',{'val1':1, 'val2': 33}).then(() => {
+  conn.set('user/ryan/one/two/three',{'val1':1, 'val2': 33}).then(() => {
     console.log("set!")
-    conn.get('test_composite_deep/one/two/three/four').then((record) => {
+    conn.get('user/ryan/one/two/three').then((record) => {
       console.log("get record",record)
-      conn.delete('test_composite_deep/one/two/three/four').then(() => {
+      conn.delete('user/ryan/one/two/three').then(() => {
         console.log("delete record")
       }).catch((err) => {
         console.log(err)

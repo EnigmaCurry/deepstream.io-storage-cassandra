@@ -17,16 +17,24 @@ const pckg = require( '../package.json' )
  * is returned. Keys specified with more cluster keys than is defined
  * on the table will overflows them into the last cluster column (see
  * example below.) Requesting a key for a table that does not exist
- * will silently create the table first. All tables have identical
- * schemas and are created by default with a predefined number of
- * cluster keys specified in options.createTableClusterKeys (default
- * is 3)
+ * will silently create the table first. 
  *
- * Automatic table creation uses a DDL like this (when createTableClusterKeys=3):
+ * Automatic table creation uses a DDL like this by default:
  *  CREATE TABLE test (pk text, k1 text, k2 text, 
  *    k3 text, data text, PRIMARY KEY (pk, k1, k2, k3));
  *
- * Most storage connectors use everything after the table_name as a
+ * You can also use other column types for your cluster keys. You can do this two ways:
+ *   1) Modifying the colSpec in options.defaultPrimaryKey
+ *   2) Calling createTable(name, colSpec) directly.
+ * A colspec could look like this:
+ *   eg: [{name:'pk', type:'uuid'}, {name: 'attr', type:'int'}]
+ * This would create a table like this:
+ *   CREATE TABLE test (pk uuid, attr int, data text, PRIMARY KEY (pk, attr));
+ * NOTE: if you use non-text values for keys, you will need to do
+ *   extra validation in valve to ensure that the keys you create are
+ *   valid for your schema, otherwise you'll get errors on save. 
+ *
+ * Most other storage connectors use everything after the table_name as a
  * single key field. However, in Cassandra we can use a composite key
  * (pk, k1, k2, k3) and do more effective query operations later.
  *
@@ -64,7 +72,10 @@ class Connector extends events.EventEmitter {
     this.version = pckg.version
     this._keyspace = options.keyspace || 'deepstream'
     this._defaultTable = options.defaultTable || 'global'
-    this._createTableClusterKeys = options.createTableClusterKeys || 3
+    this._defaultPrimaryKey = options.defaultPrimaryKey || [{name:'pk', type:'text'},
+                                                            {name:'k1', type:'text'},
+                                                            {name:'k2', type:'text'},
+                                                            {name:'k3', type:'text'}]
     this._tablemeta = {}
     
     this.client = new cassandra.Client({ contactPoints: options.db_hosts, keyspace: options.keyspace })
@@ -136,6 +147,7 @@ class Connector extends events.EventEmitter {
           return `${k}=?`
         })
         const query = `SELECT JSON * from ${validated.table} WHERE ${keyConstraints.join(' AND ')}`
+        console.log(validated.keys)
         this.client.execute(query, validated.keys, {prepare: true})
                .then(result => {
                  if (result.rowLength == 0) {
@@ -232,23 +244,20 @@ class Connector extends events.EventEmitter {
         this.client.metadata.getTable(this._keyspace, tableName).then((tableMeta) => {
           if (tableMeta) {
             this._tablemeta[tableName] = {
-              partitionKey: tableMeta.partitionKeys[0].name,
-              clusteringKeys: tableMeta.clusteringKeys.map(key => key.name)
+              partitionKey: {name: tableMeta.partitionKeys[0].name,
+                             type: cassandra.types.getDataTypeNameByCode(tableMeta.partitionKeys[0].type)},
+              clusteringKeys: tableMeta.clusteringKeys.map(key => {
+                return {name: key.name,
+                        type: cassandra.types.getDataTypeNameByCode(key.type)}
+              })
             }
             return resolve(this._tablemeta[tableName])
           } else {
             // Create table
-            const clusteringKeys = _.map(Array(this._createTableClusterKeys), (x,i) => `k${i+1}`)
-            const clusteringKeysDef = _.map(clusteringKeys, x => `${x} text`).join(',')
-            const primaryKey = "pk, " + _.map(Array(this._createTableClusterKeys), (x,i) => `k${i+1}`).join(', ')
-            const query = `CREATE TABLE IF NOT EXISTS ${tableName} (pk text, ${clusteringKeysDef}, data text, PRIMARY KEY (${primaryKey}))`
-            this.client.execute(query)
+            this.createTable(tableName, this._defaultPrimaryKey)
                 .then(result => {
-                  this._tablemeta[tableName] = {
-                    partitionKey: 'pk',
-                    clusteringKeys: clusteringKeys
-                  }
-                  return resolve(this._tablemeta[tableName])
+                  this._tablemeta[tableName] = result
+                  return resolve(result)
                 }).catch(err => {
                   console.log(err)
                   reject(err)
@@ -259,6 +268,28 @@ class Connector extends events.EventEmitter {
           reject(err)
         })
       } 
+    })
+  }
+
+  /**
+   * Create a table and return some metadata about it:
+   */
+  createTable( tableName, keyColumns ) {
+    return new Promise((resolve, reject) => {
+      const keyCols = keyColumns.map(col => {
+        return `${col.name} ${col.type}`
+      }).join(', ')
+      const primaryKey = keyColumns.map(col => {
+        return `${col.name}`
+      }).join(', ')
+      const query = `CREATE TABLE IF NOT EXISTS ${tableName} (${keyCols}, data text, PRIMARY KEY (${primaryKey}))`
+      this.client.execute(query)
+          .then(result => {
+            return resolve({
+              partitionKey: keyColumns[0],
+              clusteringKeys: keyColumns.slice(1)
+            })
+          })
     })
   }
   
@@ -288,9 +319,9 @@ class Connector extends events.EventEmitter {
       
       this._getTableMeta( tableName ).then((metadata) => {
         //The partition key defined by the table:
-        const partitionKeyName = metadata.partitionKey
+        const partitionKeyName = metadata.partitionKey.name
         //The clustering keys defined by the table:
-        const clusterKeyNames = metadata.clusteringKeys
+        const clusterKeyNames = metadata.clusteringKeys.map(col => col.name)
         if (clusterKeyNames.length < clusterKeys.length ) {
           //The key has more parts to it than we have cluster columns in the table.
           //Let the cluster keys that overflow spill into the last key column as one key with / in it.
@@ -301,10 +332,9 @@ class Connector extends events.EventEmitter {
         //The key values:
         const keys = {}
         keys[partitionKeyName] = partitionKey
-        clusterKeyNames.map((colName, i) => {
-          keys[colName] = _.get(clusterKeys, i, '') //Blank for omitted cluster keys
+        metadata.clusteringKeys.map((k, i) => {
+          keys[k.name] = _.get(clusterKeys, i, '') //Blank is default value for non-specified keys
         })
-        
         //The validated key names and their passed in values:
         return resolve({table: tableName, keys: keys, data: value})
       }).catch((err) => {
