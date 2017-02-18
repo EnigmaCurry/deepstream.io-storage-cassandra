@@ -15,11 +15,12 @@ const pckg = require( '../package.json' )
  * Any omitted cluster keys are replaced with an empty string. Giving
  * a default to each cluster key this way ensures only a single record
  * is returned. Keys specified with more cluster keys than is defined
- * on the table will result in an error. Requesting a key for a table
- * that does not exist will silently create the table first. All
- * tables have identical schemas and are created by default with a
- * predefined number of cluster keys specified in
- * options.createTableClusterKeys (default is 3)
+ * on the table will overflows them into the last cluster column (see
+ * example below.) Requesting a key for a table that does not exist
+ * will silently create the table first. All tables have identical
+ * schemas and are created by default with a predefined number of
+ * cluster keys specified in options.createTableClusterKeys (default
+ * is 3)
  *
  * Automatic table creation uses a DDL like this (when createTableClusterKeys=3):
  *  CREATE TABLE test (pk text, k1 text, k2 text, 
@@ -36,6 +37,8 @@ const pckg = require( '../package.json' )
  *  user/ryan/settings/app2 - Ryan's settings for app2 (pk='ryan' k1='settings' k2='app2' k3='')
  *  user/ryan/inbox - Ryan's inbox (pk='ryan' k1='inbox' k2='' k3='')
  *  user/ryan/inbox/message/xxxxx - A specific message in Ryan's inbox (pk='ryan' k1='inbox' k2='message' k3='xxxxx')
+ *  user/ryan/some/more/really/really/deep/thing - A record that overflows the cluster columns:
+ *                                                 (pk:'ryan' k1:'some' k2:'more' k3:'really/really/deep/thing')
  *
  * As long as you order your cluster keys wisely, you can enable efficient queries for other clients:
  *  - Get Ryan's main inbox object, always returns one row:
@@ -44,6 +47,9 @@ const pckg = require( '../package.json' )
  *    - SELECT * FROM user WHERE pk='ryan' AND k1='inbox' AND k2='message'
  *  - Delete the entire ryan account and all its data:
  *    - DELETE FROM user WHERE pk='ryan'
+ *  - Query deep keys, but still only possible to query on the exact cluster columns:
+ *    - SELECT * FROM user WHERE pk='ryan' AND k1='some' AND k2='more' AND k3='really/really/deep/thing'
+ *      (If you wanted to query just on the first 'really', you would need more cluster columns defined)
  */
 class Connector extends events.EventEmitter {
 
@@ -226,8 +232,8 @@ class Connector extends events.EventEmitter {
         this.client.metadata.getTable(this._keyspace, tableName).then((tableMeta) => {
           if (tableMeta) {
             this._tablemeta[tableName] = {
-              partitionKey: metadata.partitionKeys[0].name,
-              clusteringKeys: metadata.clusteringKeys.map(key => key.name)
+              partitionKey: tableMeta.partitionKeys[0].name,
+              clusteringKeys: tableMeta.clusteringKeys.map(key => key.name)
             }
             return resolve(this._tablemeta[tableName])
           } else {
@@ -278,15 +284,20 @@ class Connector extends events.EventEmitter {
       //The partition key specified:
       const partitionKey = keyParts[1]
       //The clustering keys specified:
-      const clusterKeys = keyParts.slice(2)
+      let clusterKeys = keyParts.slice(2)
       
       this._getTableMeta( tableName ).then((metadata) => {
         //The partition key defined by the table:
         const partitionKeyName = metadata.partitionKey
         //The clustering keys defined by the table:
         const clusterKeyNames = metadata.clusteringKeys
-        if (clusterKeyNames.length < clusterKeys.length )
-          return reject(`Key (${key}) has more clustering keys than the table has (${clusterKeyNames.length})`)
+        if (clusterKeyNames.length < clusterKeys.length ) {
+          //The key has more parts to it than we have cluster columns in the table.
+          //Let the cluster keys that overflow spill into the last key column as one key with / in it.
+          // eg. /user/ryan/one/two/three/four becomes pk='ryan' k1='one' k2='two' k3='three/four'
+          const k = clusterKeyNames.length - 1
+          clusterKeys = clusterKeys.slice(0,k).concat(clusterKeys.slice(k).join('/'))
+        }
         //The key values:
         const keys = {}
         keys[partitionKeyName] = partitionKey
