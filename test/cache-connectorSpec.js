@@ -3,7 +3,7 @@
 /* global describe, expect, it, jasmine */
 const expect = require('chai').expect
 const CacheConnector = require('../src/connector')
-const util = require('../src/util')
+const util = require('./util')
 const EventEmitter = require('events').EventEmitter
 const MESSAGE_TIME = 20
 

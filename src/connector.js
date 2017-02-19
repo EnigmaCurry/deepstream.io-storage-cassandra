@@ -1,7 +1,6 @@
 'use strict'
 
 const events = require( 'events' )
-const util = require( 'util' )
 const cassandra = require('cassandra-driver')
 const _ = require('lodash')
 const pckg = require( '../package.json' )
