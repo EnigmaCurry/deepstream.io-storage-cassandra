@@ -46,6 +46,10 @@ columns](http://cassandra.apache.org/doc/latest/cql/ddl.html#clustering-columns)
 
 ```{table_name}/{partition_key}/{optional_1st_cluster_key}/.../{optional_nth_cluster_key}```
 
+Data associated with the key is reduced to a JSON blob. This allows
+you to query on any of the parts of the record key, but not on the
+contents.
+
 For example, a deepstream record might look like this:
 
  * key: ```user/ryan/settings```

@@ -56,7 +56,16 @@ const pckg = require( '../package.json' )
  *    - DELETE FROM user WHERE pk='ryan'
  *  - Query deep keys, but still only possible to query on the exact cluster columns:
  *    - SELECT * FROM user WHERE pk='ryan' AND k1='some' AND k2='more' AND k3='really/really/deep/thing'
- *      (If you wanted to query just on the first 'really', you would need more cluster columns defined)
+ *       pk   | k1   |  k2  |           k3             |       data
+ *      ------+------+------+--------------------------+------------------
+ *       ryan | some | more | really/really/deep/thing | \* serialized data *\
+ * 
+ *    - If you think you'll use keys this long, simply add more
+ *      cluster columns to the defaultPrimaryKey option or in the
+ *      createTable() call. It's not easy to add more in Cassandra
+ *      though, you'll have to create a new table, so it pays to
+ *      premeditate how many you'll actually need when you create the
+ *      table.
  */
 class Connector extends events.EventEmitter {
 
