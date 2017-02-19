@@ -32,7 +32,7 @@ describe( 'the message connector has the correct structure', () => {
   })
 
   it( 'retrieves a non existing value', ( done ) => {
-    cacheConnector.get( 'someTable/someValue', ( error, value ) => {
+    cacheConnector.get( 'someValue', ( error, value ) => {
       expect( error ).to.equal( null )
       expect( value ).to.equal( null )
       done()
@@ -40,15 +40,14 @@ describe( 'the message connector has the correct structure', () => {
   })
 
   it( 'sets a value', ( done ) => {
-    cacheConnector.set( 'someTable/someValue', {  _d: { v: 10 }, firstname: 'Wolfram' }, ( error ) => {
+    cacheConnector.set( 'someValue', {  _d: { v: 10 }, firstname: 'Wolfram' }, ( error ) => {
       expect( error ).to.equal( null )
       done()
     })
   })
 
   it( 'retrieves an existing value', ( done ) => {
-    cacheConnector.get( 'someTable/someValue', ( error, value ) => {
-      console.log(error)
+    cacheConnector.get( 'someValue', ( error, value ) => {
       expect( error ).to.equal( null )
       expect( value ).to.deep.equal( {  _d: { v: 10 }, firstname: 'Wolfram' } )
       done()
@@ -56,14 +55,14 @@ describe( 'the message connector has the correct structure', () => {
   })
 
   it( 'deletes a value', ( done ) => {
-    cacheConnector.delete( 'someTable/someValue', ( error ) => {
+    cacheConnector.delete( 'someValue', ( error ) => {
       expect( error ).to.equal( null )
       done()
     })
   })
 
   it( 'Can\'t retrieve a deleted value', ( done ) => {
-    cacheConnector.get( 'someTable/someValue', ( error, value ) => {
+    cacheConnector.get( 'someValue', ( error, value ) => {
       expect( error ).to.equal( null )
       expect( value ).to.equal( null )
       done()
