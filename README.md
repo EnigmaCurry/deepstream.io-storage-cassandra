@@ -12,19 +12,19 @@ plugins:
     options:
       db_hosts:
         - ${CASSANDRA_HOST}
-      keyspace: 'deepstream' # This keyspace has to already exist
+      keyspace: deepstream # This keyspace has to already exist
 
       # optional (specify only if you want different defaults)
-      defaultTable: 'global'
+      defaultTable: global
       defaultPrimaryKey:
-        - name: 'pk'
-          type: 'text'
-        - name: 'k1'
-          type: 'text'
-        - name: 'k2'
-          type: 'text'
-        - name: 'k3'
-          type: 'text'
+        - name: pk
+          type: text
+        - name: k1
+          type: text
+        - name: k2
+          type: text
+        - name: k3
+          type: text
 ```
 
  * db_hosts - The initial list of Cassandra nodes for the driver to
