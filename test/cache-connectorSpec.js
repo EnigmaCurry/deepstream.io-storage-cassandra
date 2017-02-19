@@ -1,5 +1,9 @@
 'use strict'
 
+// For Cassandra testing pass either of the following environment variables:
+// CASSANDRA_HOST - the ip address of the running cassandra host
+// CASSANDRA_DOCKER - the name of a docker container running cassandra to inspect for an ip address
+
 /* global describe, expect, it, jasmine */
 const expect = require('chai').expect
 const CacheConnector = require('../src/connector')
@@ -19,6 +23,8 @@ describe( 'the message connector has the correct structure', () => {
       cacheConnector = new CacheConnector( settings )
       expect( cacheConnector.isReady ).to.equal( false )
       cacheConnector.on( 'ready', done )
+    }).catch(err => {
+      console.log("Could not connect to cassandra. Check your CASSANDRA_HOST or CASSANDRA_DOCKER env variable is correct.")
     })
   })
 
